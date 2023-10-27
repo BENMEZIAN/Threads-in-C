@@ -1,69 +1,59 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <pthread.h>
 
-#define NUM_THREADS 5
+#define NUM_THREADS 10
 
-int arr[] = {1, 2, 3, 4, 5};
-pthread_t threads[NUM_THREADS];
-int thread_ids[NUM_THREADS];
-int result[NUM_THREADS];
+// Global flag to signal other threads to exit
+volatile int exit_flag = 0;
 
-// Function to calculate the square of an individual element
-void* square(void* arg) {
-    int thread_arg = *((int*)arg);
-    int* carre = (int*)malloc(sizeof(int));
-    *carre = thread_arg * thread_arg;
-    pthread_exit((void*)carre);
+// Function to check if a number is prime based on remainders
+int is_prime(int n) {
+    if (n <= 1) {
+        return 0; // Not prime
+    }
+    if (n == 2) {
+        return 1; // Prime
+    }
+    if (n % 2 == 0) {
+        return 0; // Not prime
+    }
+    for (int i = 3; i * i <= n; i += 2) {
+        if (n % i == 0) {
+            return 0; // Not prime
+        }
+    }
+    return 1; // Prime
 }
 
-// Function to calculate the square of an element in an array
-void* square_array(void* arg) {
-    int thread_id = *((int*)arg); // sending the ID of the thread (i= 0.......NUM_THREADS-1)
-    pthread_t tid = pthread_self(); // Get the ID of the current thread
-    printf("Thread %d (ID: %p) is calculating the square of arr[%d]\n", thread_id + 1, (unsigned long)tid, thread_id);
-    result[thread_id] = arr[thread_id] * arr[thread_id];
+// Thread function to check primality
+void* check_prime(void* arg) {
+    int num = *((int*)arg);
+    
+    if (!is_prime(num)) {
+        // Found a divisor; signal other threads to exit
+        exit_flag = 1;
+        printf("%d is not a prime (divisor found)\n", num);
+    } else {
+        // Number is still potentially prime; continue checking
+        printf("%d is prime\n", num);
+    }
+    
     pthread_exit(NULL);
 }
 
 int main() {
 	
-    printf("*************1- Square of one element:*****************\n");
-    int arg = 5;
-    int* y; // to receive the output
-
-    pthread_t tid;
-    pthread_create(&tid, NULL, square, (void*)&arg); // Create a new thread and pass the argument
-    pthread_join(tid, (void**)&y); // Wait for the thread to finish
-
-    printf("Square of %d is: %d\n", arg, *y); // Print the result
-    free(y); // Free the memory allocated for y
-
-    printf("*************2- Square of an array:********************\n");
-    printf("Original array: ");
-    for (int i = 0; i < NUM_THREADS; i++) {
-        printf("%d ", arr[i]);
-    }
-    printf("\n");
+    int numbers[] = {2, 3, 4, 5, 6, 7, 8, 9, 10};
+    pthread_t threads[NUM_THREADS];
+    int results[NUM_THREADS];
 
     for (int i = 0; i < NUM_THREADS; i++) {
-        thread_ids[i] = i;
-        pthread_create(&threads[i], NULL, square_array, (void*)&thread_ids[i]);
+        pthread_create(&threads[i], NULL, check_prime, &numbers[i]);
     }
 
-    // Wait for all threads to finish
     for (int i = 0; i < NUM_THREADS; i++) {
-        pthread_join(threads[i], NULL);
+        pthread_join(threads[i], (void**)&results[i]);
     }
-
-    printf("Squares of elements: ");
-    for (int i = 0; i < NUM_THREADS; i++) {
-        printf("%d ", result[i]);
-    }
-    printf("\n");
 
     return 0;
 }
-
-// BENMEZIANE ABDELMALEK signature
-// BENMEZIANE ABDELMALEK signature
